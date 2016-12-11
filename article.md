@@ -1,22 +1,72 @@
 Здравствуйте.
-Это туториал о переводе небольшого учебного проекта, с JSP на Angular 2.
-В роли учебного проекта у нас [учебного Java проекта](https://github.com/JavaOPs/topjava) ведущего Java Enterprise тренингов [Григория Кислина](https://habrahabr.ru/users/gkislin/).
-В данном материале, я рассмотрю устройство Angular 2 приложения и его компонентов таких как: [Components](https://angular.io/docs/ts/latest/cookbook/component-communication.html) , [Services](https://angular.io/docs/ts/latest/tutorial/toh-pt4.html) , [Pipes](https://angular.io/docs/ts/latest/guide/pipes.html) , [Router Guard](http://blog.thoughtram.io/angular/2016/07/18/guards-in-angular-2.html) , [RxJS Subject](http://xgrommx.github.io/rx-book/content/subjects/subject/index.html)
-Тем кому был интересен Angular 2 но кто еще не успел его опробовать а так же всем остальным - добро пожаловать под кат.
-Оригинал кода до переделки можно найти в [этом репозитории](https://github.com/12ozCode/topjava08) в ветке master
+Это туториал о переводе небольшого учебного Java-проекта, с JSP на Angular 2.
+В роли учебного проекта у нас **TopJava** ведущего Java Enterprise тренингов [Григория Кислина](https://habrahabr.ru/users/gkislin/).
+В данном материале, мы рассмотрим переделку Back-End'а под нужды RESTful API и устройство Angular 2 приложения и его компонентов таких как:
+
+- Components
+- Services
+- Pipes
+- Router Guard
+- RxJS (Observable, Subject)
+
+Статья по большей части направлена на людей занимающихся back-end'ом, но которым время от времени приходится делать web
+
+- Если вы не сильно любите JSP и JSF
+- Голый JavaScript без родных типов и нормальной компонентной структуры вас совсем не радует
+- Вы ищите хороший JS фреймворк, с большим сообществом и будущим, а не месиво из библиотек
+
+Angular 2 может оказаться вполне хорошим выбором.
+
+____________________________________________
+
+
+**Оригинал** кода до переделки можно найти в [этом репозитории](https://github.com/12ozCode/topjava08-to-angular2) в ветке _master_
+**Переделанный** проект лежит [здесь](https://github.com/12ozCode/topjava08-to-angular2/tree/angular2) в ветке _angular2_
+**Демо** результата [здесь](topjava-angular2.herokuapp.com)
 
 -картинка
 
-Сразу оговорюсь, что целью статьи не является переосмысление проекта и демонстрация идеальной REST архитектуры, статья показывает как
-с минимальными затратами перейти на SPA. В любом случае, за любые поправки и замечания буду благодарен, и буду стараться оперативно вносить правки.
+
+Целью статьи не является рефактор проекта и демонстрация идеальной REST архитектуры, статья показывает как устроен **Angular 2** и как
+с минимальными затратами перейти на SPA. В любом случае, за любые полезные поправки и замечания буду благодарен, и буду стараться оперативно вносить правки.
 Итак начнем.
 
+**Немного о проекте**: _приложение с регистрацией/авторизацией и интерфейсом на основе ролей (USER, ADMIN). Администратор может создавать/редактировать/удалять/пользователей,
+а пользователь - управлять своим профилем и данными (день, еда, калории) через UI (по AJAX) и по REST интерфейсу с базовой авторизацией.
+Возможна фильтрация данных по датам и времени, при этом цвет записи таблицы еды зависит от того, превышает ли сумма калорий за день норму
+(редактируемый параметр в профиле пользователя)._
+
 ##Backend
-А начнем мы с хендлеров для Spring Security что бы избежать ненужных нам в REST редиректов
+Итак для удобного взаимодействий с сервером, нам придется этот сервер немного изменить.
+
+
+[AdminAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminAjaxController.java) будет выпилиен за ненадобностью,
+а его метод **enabled** (для активации\блокировки пользователя) заберем в [AdminRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminRestController.java)
+оставив таким образом один контроллер для админа.
+Также поступим и с [MealAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealAjaxController.java) оставив только [MealRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealRestController.java)
+
+[ModelInterceptor](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/interceptor/ModelInterceptor.java) нам также не нужен так мы не используем JSP
+[GlobalControllerExceptionHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/GlobalControllerExceptionHandler.java) выпилываем у нас нету jsp-error страницы, в [RootController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/RootController.java) убираем все методы возвращающие jsp-view, нам понадобиться только регистрация и загрузка сообщений по языку о котором дальше.
+Так как я не нашел нормального пути загрузки сразу всех сообщений по языку, мне пришлось создать [CustomReloadableResourceBundleMessageSource](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/resources/CustomReloadableResourceBundleMessageSource.java)
+
+```java
+public class CustomReloadableResourceBundleMessageSource extends ReloadableResourceBundleMessageSource {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomReloadableResourceBundleMessageSource.class);
+
+    public Properties getAllMessages(Locale locale) {
+        PropertiesHolder mergedProperties = getMergedProperties(locale);
+        return mergedProperties.getProperties();
+    }
+}
+```
+и добавить метод вытягивающие все сообщения по запрошенному языку (при смене локали ва нашем вэб-приложении мы будем его вызывать).
+
+Также нам понадобятся хендлеры для Spring Security что бы избежать ненужных нам в REST редиректов
 и томкатовских ошибок и получать подходящие ответы для фронта в json.
 
 ### Spring Security Handlers
-**AuthenticationEntryPoint**
+**[AuthenticationEntryPoint](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomRestAuthenticationEntryPoint.java)** -  При неаутентифицированном доступе к закрытому ресурсу мы будем возвращать статус с ошибкой JSON'е.
 ```Java
 public class CustomRestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
@@ -36,7 +86,7 @@ public class CustomRestAuthenticationEntryPoint implements AuthenticationEntryPo
 }
 ```
 
-**AccessDeniedHandler**
+**[AccessDeniedHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomAccessDeniedHandler.java)** - так же переопределяем поведении при выбрасывании исключения **AccessDeniedException**
 ```Java
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
@@ -58,7 +108,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 }
 ```
 
-**SimpleUrlLogoutSuccessHandler**
+**[CustomLogoutSuccessHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomLogoutSuccessHandler.java)** - при логауте просто отдаем HTTP 200.
 ```Java
 public class CustomLogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
 
@@ -71,7 +121,7 @@ public class CustomLogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
 }
 ```
 
-**SimpleUrlAuthenticationSuccessHandler**
+**[CustomSavedRequestAwareAuthenticationSuccessHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomSavedRequestAwareAuthenticationSuccessHandler.java)** - после успешного логина нам не нужны никакие редиректы.
 ```Java
 public class CustomSavedRequestAwareAuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
@@ -109,7 +159,7 @@ public class CustomSavedRequestAwareAuthenticationSuccessHandler extends SimpleU
 }
 ```
 
-**SimpleUrlAuthenticationFailureHandler**
+**[CustomUrlAuthenticationFailureHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomUrlAuthenticationFailureHandler.java)** - после неуспешной авторизации, так же нам нужен только HTTP-ответ.
 
 ```Java
 public class CustomUrlAuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
@@ -126,7 +176,7 @@ public class CustomUrlAuthenticationFailureHandler extends SimpleUrlAuthenticati
 }
 ```
 
-###web.xml
+###[web.xml](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/webapp/WEB-INF/web.xml)
 - Теперь перенесем наш REST с корня на **/topjava-rs/**, статические ресурсы сайта будут лежать в корне
 ```xml
     <!-- Spring MVC -->
@@ -164,19 +214,87 @@ public class CustomUrlAuthenticationFailureHandler extends SimpleUrlAuthenticati
     </filter-mapping>
 ```
 
-Так же были изменены контроллеры, были выпилены JSP-контроллеры. Оставлены только RESTful API, которых не хватало - дописаны.
 Так, вроде, все.
 
 ## Angular 2
 Можно переходить к ангулару.
-Для этого нам понадобиться установленный [NodeJS](https://nodejs.org/) .
+Angular 2 это полностью переписанный с 0 фреймворк. Который по заверениям разработчиков и тестам стал намного быстрее.
+Теперь здесь используется TypeScript который дает нам возможность использовать статическую типизацию, классы
+и нормальный компонентный подход. Конечно, в Angular 2 можно еще писать на Dart или чистом JavaScript. Но мне не совсем понятен смысл, плюс весь материал который вы
+сможете найти в сети, скорее всего будет написан на TypeScript. Кроме того Angular 2 это не только ценный мех но и полноценный фреймворк, это значит, что скорее всего
+то что вам понадобиться уже будет в коробке. И вам не придется сшивать очередного франкенштейна с разных библиотек. Для пессимистов скажу, что TypeScript транспилируется во
+вполне читаемый JavaScript, который при надобности реально подредактировать руками.
 
-Все эти конфигурационные файлы будут находится в корне папки **webapp** нашего проекта.
+Все в Angular 2 является компонентом который описывается классом с метаданными.
+
+**Component**
+Например типичный компонент выглядит примерно так :
+```typescript
+@Component({
+  selector: 'my-component',
+  template: '<div>Hello my name is {{name}}. <button (click)="sayMyName()">Say my name</button></div>'
+})
+export class MyComponent {
+  constructor() {
+    this.name = 'Tom'
+  }
+  sayMyName() {
+    console.log('My name is', this.name);
+  }
+}
+```
+Это класс с метаданными в функции-декораторе.
+В декораторе **@Component** описаны
+ 1. **selector** - Селектор который используется для отрисовки данного компонента на странице (yна страницу помещается кастомный тег с этим именем внутри которого и будет отрисован шаблон компонента).
+ 2. **templateUrl\templateUrl** - относительная ссылка на html-шаблон компонента или шабло инлайн как в примере.
+ Шаблон имеет доступ ко всем методам и переменным своего компонента.
+
+**Service**
+Есть еще другие виды компонентов например сервисы они также описываются класом, но не имеют html-шаблона.
+Например
+```typescript
+@Injectable()
+export class HeroService {
+    doSmth() {
+        console.log('I'm working');
+    }
+}
+```
+Может использоваться как зависимость для предоставления данных компонентам. @Injectable() нужен для инжектора Angular 2. Этот декоратор указывает, что этот сервис может требовать
+в качестве зависимостей другие сервисы. Если у сервиса нету в зависимостях других сервисов, @Injectable() можно опускать, чего делать не рекомендуется.
+
+**Attribute directives**
+Может использоваться для изменения поведения или вида элемента шаблона.
+Пример использования:
+```html
+<p [style.background]="'lime'">I am green with envy!</p>
+```
+
+```typescript
+@Directive({ selector: '[myHighlight]' })
+export class HighlightDirective {
+    constructor(el: ElementRef) {
+       el.nativeElement.style.backgroundColor = 'yellow';
+    }
+}
+```
+Имеет свой декоратор и селектор который потом используется в элементе шаблона, наша директива получает управление над элементом.
+
+Мы рассмотрели основные "кубики" из которых строится приложение в Angular 2. Далее будет логичным рассмотреть рабочее приложение на примере нашего проекта.
+
+Для этого нам понадобиться установленный [NodeJS](https://nodejs.org/). Если вы раньше не имели опыта общение с ним, ничего страшного там нет, качаем версию LTS и кликаем далее.
+
+Все эти конфигурационные файлы находятся в корне папки **webapp** нашего проекта.
 
 Создаем файл с зависимостями для NPM.
-Так же можно заметить, наличие [PrimgNG](http://www.primefaces.org/primeng/#/datatable) в зависимостях. Это набор старых, добрых компонентов из PrimeFaces, адаптированных под Angualar 2. Мы будем использовать его готовые компоненты в нашем приложении такие как: [datatable](http://www.primefaces.org/primeng/#/datatable) , [calendar](http://www.primefaces.org/primeng/#/calendar) , [growl](http://www.primefaces.org/primeng/#/growl).
+Тут можно провести параллель с .pom файлом в Java для Maven если вы знакомы с Java.
+Так же можно заметить, наличие PrimgNG в зависимостях. Это набор старых, добрых компонентов из PrimeFaces, написанных на Angualar 2. Мы будем использовать эти готовые компоненты в нашем приложении такие как:
 
-_**package.json**_
+- **datatable** (вывод данных)
+- **calendar** (выбор даты и времени)
+- **growl** (вывод ошибок)
+
+[**package.json**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/package.json)
 ```JavaScript
 {
   "name": "angular-quickstart",
@@ -223,8 +341,14 @@ _**package.json**_
 }
 ```
 
-Файл с настройками TypeScript:
-_**tsconfig.json**_
+Файл с настройками TypeScript, с того что важно отметить здесь указывается:
+
+- в какую версию JavaScript транспилировать код, лучше оставить в es5 для сохранения совместимости
+- какую систему модулей JavaScript использовать
+- **"sourceMap": true** генерировать ли специальный маппинг файлы для транспилированного JS, с помощью их вы сможете дебажить сразу красивый и приятный TypeScript как буд-то он и выполняется.
+- **outDir** папка куда складывать готвоый JavaScript
+
+[**tsconfig.json**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/tsconfig.json)
 ```javascript
 {
   "compilerOptions": {
@@ -240,9 +364,12 @@ _**tsconfig.json**_
   }
 }
 ````
-target лучше оставить в es5 для сохранения совместимости.
 
-И конфигурация для нашего загрузчика модулей SystemJS:
+И конфигурация для нашего загрузчика модулей SystemJS, из того что стоит отметить:
+
+- Здесь есть маппинг наших импортов на расположение этих зависимостей в **node_modules**, здесь есть то что мы используем то есть angular, rxjs, primeng
+- Также мы указываем папку нашего приложения, ту которую указали в настройках TypeScript, а именно **app: 'app'**
+
 _**systemjs.config.js**_
 ```javascript
 /**
@@ -292,7 +419,7 @@ _**systemjs.config.js**_
     });
 })(this);
 ```
-Готово, теперь, не уходя с webapp вводим в консоль **_npm install_** и NPM начнет скачивать наши зависимости описанные в **_package.json_**
+Готово, теперь, не уходя с webapp вводим в консоль **_npm install_** и NPM (пакетный менеджер NodeJS) начнет скачивать наши зависимости описанные в **_package.json_**
 создав папку node_modules, и аккуратно все сложив туда.
 
 Теперь переходим к самому интересному. Начинаем трогать **Angular 2**.
@@ -460,9 +587,6 @@ export const routing: ModuleWithProviders = RouterModule.forRoot(appRoutes, {use
 
 AppComponent
 Наш родительский компонент.
-В декораторе **@Component** описаны
- 1. **selector** - Селектор который используется для данного компонента (можно заметить на нашей index.html)
- 2. **templateUrl** - относительная ссылка на html-шаблон компонента
 
  Теперь интереснее, взглянув на шаблон нашего родительского компонента нужно понимать что:
 
@@ -1041,7 +1165,7 @@ export class MealService {
 ```
 MealService используется для общения приложения с сервером по HTTP.
 1. Первое что нужно понимать это - сервис. Он не имеет html-шаблона и декоратора @Component() он ничего не отображает. Его задача предоставлять функциональность компонентам.
-2. @Injectable() нужен для инжектора Angular 2 этот декоратор указывает что в этот сервис может требовать в качестве зависимостей другие сервисы. Если у сервиса нету в зависимостях других сервисов, @Injectable() можно опускать.
+2.
 Но сами создатели рекомендуют всегда использовать этот декоратор.
 3. Некоторые методы перед тем как вернуть Observable, вызывают на нем .map() этот метод позволяет изменить содержимое потока. Таким образом подписчик уже будет получать преобразованный результат. В нашем случае сразу готовый объект
 а не сырой ответ сервера.
@@ -1189,8 +1313,8 @@ export class I18nPipe implements PipeTransform {
     }
 }
 ```
-получает код в параметре **value: any** и использует его для запроса нужного нам сообщения в **i18Service.getMessage(value)** в итоге
-результат нашей интерполяции является нужное нам сообщение. Pipes могу иметь также и параметры, например **{{birthday | date:'fullDate'}}**
+получает ключ в параметре **value: any** и использует его для запроса нужного нам сообщения в **i18Service.getMessage(value)** в итоге
+результатом нашей интерполяции является нужное нам сообщение. Pipes могу иметь также и параметры, например **{{birthday | date:'fullDate'}}**
 и даже использоваться последовательно всего лишь добавив еще один **'|'** **{{birthday | date:'fullDate' | uppercase}}** так что это довольно мощный инструмент.
 Но наш пайп не самый обычный, мы может видеть что в декораторе **@Pipe()** кроме указания имени еще используется параметр **pure**.
 Все Pipes по умолчанию **stateless** то есть **(pure = true)** вызываются единоразово при рендеринге шаблона. Если же использовать **pure = false**
@@ -1199,5 +1323,10 @@ export class I18nPipe implements PipeTransform {
 так как это может серьезно ударить по производительности.
 
 ###Итого
-Мне как человеку не имевшего дела с первым Angularo'ом, второй очень нравится. Здесь есть все то, чего так не хватало
-всему тому с чем я сталкивался раньше на фроненде: типизации, нормального компонентного подохда..
+Мне как человеку не имевшего дела с первым Angularo'ом (который на первый взгляд мне не нравился), нет возможности их сравнить,
+ но второй очень нравится. Когда я решал какой из них начинать использовать, решил в пользу второго, прошел через все те изменения которые случились с ним
+ с беты, переписанный роутер, формы и т.д.
+
+Мне лично очень нравится: статическая типизация, красивый и понятный компонентный подход, удобное управление зависимостями.
+Надеюсь этот туториал будет полезен, планирую дописать еще не большую часть про деплой всего этого добра на heroku.
+
