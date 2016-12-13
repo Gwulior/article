@@ -1,7 +1,7 @@
 Здравствуйте.
 Это туториал о переводе небольшого учебного Java-проекта, с JSP на Angular 2.
 В роли учебного проекта у нас **TopJava** ведущего Java Enterprise тренингов [Григория Кислина](https://habrahabr.ru/users/gkislin/).
-В данном материале, мы рассмотрим переделку Back-End'а под нужды RESTful API и устройство Angular 2 приложения и его компонентов таких как:
+В данном материале, мы рассмотрим переделку Backend'а под нужды RESTful API и устройство Angular 2 приложения и его компонентов таких как:
 
 - Components
 - Services
@@ -9,7 +9,8 @@
 - Router Guard
 - RxJS (Observable, Subject)
 
-Статья по большей части направлена на людей занимающихся back-end'ом, но которым время от времени приходится делать web
+Статья по большей части направлена на людей занимающихся Backend'ом, но которым время от времени приходится делать web.
+Знание NodeJS и NPM не требутеся, так как нужны только элементарные команды, описанные в статье.
 
 - Если вы не сильно любите JSP и JSF
 - Голый JavaScript без родных типов и нормальной компонентной структуры вам совсем не близок
@@ -20,10 +21,10 @@ Angular 2 может оказаться вполне хорошим выборо
 ____________________________________________
 
 
-**Оригинал** кода до переделки можно найти в [этом репозитории](https://github.com/12ozCode/topjava08-to-angular2) в ветке _master_
-**Переделанный** проект лежит [здесь](https://github.com/12ozCode/topjava08-to-angular2/tree/angular2) в ветке _angular2_
-**Демо** приложения на **jsp** [здесь](http://topjava.herokuapp.com/login)
-**Демо** результата [здесь](http://topjava-angular2.herokuapp.com)
+- **Оригинал** кода до переделки можно найти в [этом репозитории](https://github.com/12ozCode/topjava08-to-angular2) в ветке _**master**_
+- **Переделанный** проект лежит [здесь](https://github.com/12ozCode/topjava08-to-angular2/tree/angular2) в ветке _**angular2**_
+- **Демо** приложения на **jsp** [здесь](http://topjava.herokuapp.com/login)
+- **Демо** результата на **Angular 2** [здесь](http://topjava-angular2.herokuapp.com)
 
 -картинка
 
@@ -41,15 +42,14 @@ ____________________________________________
 Итак для удобного взаимодействия с сервером, нам придется этот сервер немного изменить.
 
 
-[AdminAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminAjaxController.java) будет выпилиен за ненадобностью,
+- [AdminAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminAjaxController.java) будет выпилиен за ненадобностью,
 а его метод **enabled** (для активации\блокировки пользователя) заберем в [AdminRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminRestController.java)
-оставив таким образом один контроллер для админа.
-Также поступим и с [MealAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealAjaxController.java) оставив только [MealRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealRestController.java)
-
-[ModelInterceptor](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/interceptor/ModelInterceptor.java) нам также не нужен так мы не используем JSP
-[GlobalControllerExceptionHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/GlobalControllerExceptionHandler.java) выпилываем у нас нету jsp-error страницы, в [RootController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/RootController.java)
-убираем все методы возвращающие jsp-view, нам понадобятся только регистрация и загрузка сообщений по языку о котором дальше.
-Так как я не нашел нормального пути загрузки сразу всех сообщений по языку, мне пришлось создать [CustomReloadableResourceBundleMessageSource](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/resources/CustomReloadableResourceBundleMessageSource.java)
+оставив таким образом один контроллер для админа
+- Также поступим и с [MealAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealAjaxController.java) оставив только [MealRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealRestController.java)
+- [ModelInterceptor](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/interceptor/ModelInterceptor.java) нам также не нужен так мы не используем JSP
+- [GlobalControllerExceptionHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/GlobalControllerExceptionHandler.java) выпилываем у нас нету jsp-error страницы
+- в [RootController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/RootController.java) убираем все методы возвращающие jsp-view, нам понадобятся только регистрация и загрузка сообщений по языку о котором дальше.
+- Так как я не нашел нормального пути загрузки сразу всех сообщений по языку, мне пришлось создать [CustomReloadableResourceBundleMessageSource](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/resources/CustomReloadableResourceBundleMessageSource.java) и добавить метод вытягивающий все сообщения по запрошенному языку (при смене локали ва нашем вэб-приложении мы будем его вызывать).
 
 ```java
 public class CustomReloadableResourceBundleMessageSource extends ReloadableResourceBundleMessageSource {
@@ -62,7 +62,6 @@ public class CustomReloadableResourceBundleMessageSource extends ReloadableResou
     }
 }
 ```
-и добавить метод вытягивающий все сообщения по запрошенному языку (при смене локали ва нашем вэб-приложении мы будем его вызывать).
 
 Также нам понадобятся хендлеры для Spring Security что бы избежать ненужных нам в REST редиректов
 и томкатовских ошибок и получать подходящие ответы для фронта в json.
