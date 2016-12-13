@@ -49,7 +49,7 @@ ____________________________________________
 - [ModelInterceptor](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/interceptor/ModelInterceptor.java) нам также не нужен так мы не используем JSP
 - [GlobalControllerExceptionHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/GlobalControllerExceptionHandler.java) выпилываем у нас нету jsp-error страницы
 - в [RootController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/RootController.java) убираем все методы возвращающие jsp-view, нам понадобятся только регистрация и загрузка сообщений по языку о котором дальше.
-- Так как я не нашел нормального пути загрузки сразу всех сообщений по языку, мне пришлось создать [CustomReloadableResourceBundleMessageSource](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/resources/CustomReloadableResourceBundleMessageSource.java) и добавить метод вытягивающий все сообщения по запрошенному языку (при смене локали ва нашем вэб-приложении мы будем его вызывать).
+- Так как я не нашел нормального пути загрузки сразу всех сообщений по языку, мне пришлось создать [CustomReloadableResourceBundleMessageSource](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/resources/CustomReloadableResourceBundleMessageSource.java) и добавить метод вытягивающий все сообщения по запрошенному языку (при смене локали в нашем вэб-приложении мы будем его вызывать).
 
 ```java
 public class CustomReloadableResourceBundleMessageSource extends ReloadableResourceBundleMessageSource {
@@ -87,7 +87,7 @@ public class CustomRestAuthenticationEntryPoint implements AuthenticationEntryPo
 }
 ```
 
-**[AccessDeniedHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomAccessDeniedHandler.java)** - так же переопределяем поведении при выбрасывании исключения **AccessDeniedException**
+**[AccessDeniedHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomAccessDeniedHandler.java)** - так же переопределяем поведение при выбрасывании исключения **AccessDeniedException**
 ```Java
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
@@ -160,7 +160,7 @@ public class CustomSavedRequestAwareAuthenticationSuccessHandler extends SimpleU
 }
 ```
 
-**[CustomUrlAuthenticationFailureHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomUrlAuthenticationFailureHandler.java)** - после неуспешной авторизации, так же нам нужен только HTTP-ответ.
+**[CustomUrlAuthenticationFailureHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomUrlAuthenticationFailureHandler.java)** - после не успешной авторизации, так же нам нужен только HTTP-ответ.
 
 ```Java
 public class CustomUrlAuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
@@ -254,7 +254,7 @@ export class MyComponent {
  Шаблон имеет доступ ко всем методам и переменным своего компонента.
 
 **Service**
-Есть еще другие виды компонентов, например, сервисы они также описываются класом, но не имеют html-шаблона.
+Есть еще другие виды компонентов, например, сервисы они также описываются классом, но не имеют html-шаблона.
 Например
 ```typescript
 @Injectable()
@@ -531,7 +531,7 @@ export function initApp(i18nService: I18nService) {
 Для получения зависимости в компонент достаточно потребовать ее в конструкторе. Конечно DI в Angular 2 намного мощнее чем я здесь описываю, для каждого модуля можно создавать свой собственный инстанс сервиса и т.д.. Но это уже отдельная тема для разговора.
 5. Как вы наверное заметили один из компонентов, а именно **i18NService**, не просто указан по имени класса, а вместо него передан
 специальный объект который описывает как инстанциировать эту зависимость (имеет свою стратегию создания), здесь в **useFactory** передаем функцию которая должна быть выполнена
-до загрузки приложения, в нашем случае - загрузка стандартной русской локли, что бы приложение не загружалось без надписей на кнопках и т.д..
+до загрузки приложения, в нашем случае - загрузка стандартной русской локали, что бы приложение не загружалось без надписей на кнопках и т.д..
 
 Теперь создадим файл с загрузчиком нашего модуля
 
@@ -550,6 +550,7 @@ app: {
 который ссылается на уже транспилированный (переведенный с TypeScript в JavaScript) код и указывает на стартовую точку нашего приложения.
 
 Перед тем как перейти к первому компоненту осталось ознакомиться с нашим конфигом роутера. Мы используем старую **#(хэш)** стратегию так как она не требует дополнительной настройки со стороны сервера.
+Это означает, что приложение будет использовать пути после знака **#** что не заставит браузер реально перезагружать страницу.
 
 [**app.routes.ts**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/app.routes.ts)
 ```typescript
@@ -610,7 +611,7 @@ export const routing: ModuleWithProviders = RouterModule.forRoot(appRoutes, {use
  Но взглянув на шаблон нашего родительского компонента нужно понимать что:
 
  1. **\<header-component></header-component>** является селектором дочернего компонента, который будет всегда отображаться в нашем приложении
- в [**демо**](topjava-angular2.herokuapp.com) приложения это наш хидер, который выпоняет функции логин формы и не только.
+ в [**демо**](topjava-angular2.herokuapp.com) приложения это наш хидер, который выполняет функции логин формы и не только.
  2. **\<router-outlet></router-outlet>** является специальной дериктивой, внутри этих тегов будет отображен тот контент который соответствует
  URL положению на сайте. То есть если мы находимся на **.../#/meal-list**, то внутри этих тегов будет отрисован компонент [**meal-list**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/meal/meal-list.component.ts) , если
  **.../#/profile** то компонент [**profile**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/user/profile.component.ts).
@@ -697,7 +698,7 @@ private errors: ErrorModel[] = [];
 То есть мы создаем объект-отражение нашей формы в шаблоне. Отличие от **template-driven forms** в том что мы описываем логику формы в этом объекте,
 а не на странице через атрибуты. Единственное что нужно сделать в шаблоне  - это связать форму с нашим объектом через специальную директиву
 **[formGroup]="loginForm"** и ее составляющие, например **formControlName="login"**.
-В билдер передается объект, в котором ключ - название поля формы, а значение должно быть массивом, в котором первый элемент это дефолтное значение поля после создания, а следующий валидатор. Валидаторы можно объеденять через **Validators.compose()**, который принимает массив валидаторов.
+В билдер передается объект, в котором ключ - название поля формы, а значение должно быть массивом, в котором первый элемент это дефолтное значение поля после создания, а следующий валидатор. Валидаторы можно объединять через **Validators.compose()**, который принимает массив валидаторов.
 
 Конструктор компонента, во входящих параметрах мы указываем зависимости которые Angular'овский DI должен нам передать, на этапе создания, если какой-то из зависимостей не окажется созданной, мы получим ошибку.
 **private** в параметрах конструктора это синтаксический сахар, который сразу объявляет поля класса с таким же названием и присваивает им соответствующие входящие параметры, делая их доступными на уровне класса.
@@ -1184,7 +1185,7 @@ MealService используется для общения приложения 
 2. Некоторые методы перед тем как вернуть Observable, вызывают на нем .map() этот метод позволяет изменить содержимое потока. Таким образом подписчик уже будет получать преобразованный результат. В нашем случае сразу готовый объект
 а не сырой ответ сервера
 3. Для десериализации даты используется простенький класс DateTimeTransformer
-4. Все настройки и объекты RequestOptions которые нужны в любом завпросе вынесены в отдельный файл
+4. Все настройки и объекты RequestOptions которые нужны в любом запросе вынесены в отдельный файл
 [**config.ts**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/shared/config.ts)
 
 ```TypeScript
@@ -1343,5 +1344,6 @@ export class I18nPipe implements PipeTransform {
  с беты, переписанный роутер, формы и т.д.
 
 Мне лично очень нравится: статическая типизация, красивый и понятный компонентный подход, удобное управление зависимостями.
-Надеюсь этот туториал будет кому-то полезен!
+Надеюсь этот туториал будет кому-то полезен! В любом случае у вас есть свежее, рабочее приложение, с которым можно поэксперементировать и доработать.
+Спасибо за внимание!
 
