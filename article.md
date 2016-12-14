@@ -1,22 +1,20 @@
 Здравствуйте.
-Это туториал о переводе небольшого учебного Java-проекта, с JSP на Angular 2.
-В роли учебного проекта у нас **TopJava** ведущего Java Enterprise тренингов [Григория Кислина](https://habrahabr.ru/users/gkislin/).
-В данном материале, мы рассмотрим переделку Backend'а под нужды RESTful API и устройство Angular 2 приложения и его компонентов таких как:
+Это туториал о переводе небольшого учебного Java-проекта, получаемого на выходе Java Enterprise курса [Григория Кислина](https://habrahabr.ru/users/gkislin/), с JSP на Angular 2.
 
-- Components
-- Services
-- Pipes
-- Router Guard
-- RxJS (Observable, Subject)
+![image](http://i.piccy.info/i9/0270cf70b72dcbdefbe975cd06ad73f8/1481732790/69016/1099863/Layer_11_p.jpg)
 
-Статья по большей части направлена на людей занимающихся Backend'ом, но которым время от времени приходится делать web.
-Знание NodeJS и NPM не требутеся, так как нужны только элементарные команды, описанные в статье.
+В данном материале, мы рассмотрим переделку Backend'а под нужды RESTful API и устройство Angular 2 приложения и его основных компонентов.
 
-- Если вы не сильно любите JSP и JSF
+
+Статья по большей части направлена на людей занимающихся Backend'ом, но которым время от времени приходится делать web. Если вы
+
+- Не сильно любите JSP и JSF
 - Голый JavaScript без родных типов и нормальной компонентной структуры вам совсем не близок
 - Вы ищите хороший JS фреймворк, с большим сообществом и будущим, а не месиво из библиотек
 
 Angular 2 может оказаться вполне хорошим выбором.
+
+Знание NodeJS и NPM не требутеся, так как нужны только элементарные команды, описанные в статье.
 
 ____________________________________________
 
@@ -26,196 +24,14 @@ ____________________________________________
 - **Демо** приложения на **jsp** [здесь](http://topjava.herokuapp.com/login)
 - **Демо** результата на **Angular 2** [здесь](http://topjava-angular2.herokuapp.com)
 
--картинка
-
-
-Целью статьи не является рефактор проекта и демонстрация идеальной REST архитектуры, статья показывает как устроены основные компоненты **Angular 2** и как
-с минимальными затратами перейти на SPA. В любом случае, за любые полезные поправки и замечания буду благодарен, буду стараться оперативно вносить правки.
+Целью статьи не является переосмысление проекта и демонстрация идеальной REST архитектуры, статья показывает как устроены основные компоненты **Angular 2** и как
+с минимальными затратами перейти на Angular 2. В любом случае, за любые полезные поправки и замечания буду благодарен, буду стараться оперативно вносить правки.
 Итак начнем.
 
 **Немного о проекте**: _приложение с регистрацией/авторизацией и интерфейсом на основе ролей (USER, ADMIN). Администратор может создавать/редактировать/удалять/пользователей,
 а пользователь - управлять своим профилем и данными (день, еда, калории) через UI (по AJAX) и по REST интерфейсу с базовой авторизацией.
 Возможна фильтрация данных по датам и времени, при этом цвет записи таблицы еды зависит от того, превышает ли сумма калорий за день норму
 (редактируемый параметр в профиле пользователя)._
-
-##Backend
-Итак для удобного взаимодействия с сервером, нам придется этот сервер немного изменить.
-
-
-- [AdminAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminAjaxController.java) будет выпилиен за ненадобностью,
-а его метод **enabled** (для активации\блокировки пользователя) заберем в [AdminRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminRestController.java)
-оставив таким образом один контроллер для админа
-- Также поступим и с [MealAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealAjaxController.java) оставив только [MealRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealRestController.java)
-- [ModelInterceptor](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/interceptor/ModelInterceptor.java) нам также не нужен так мы не используем JSP
-- [GlobalControllerExceptionHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/GlobalControllerExceptionHandler.java) выпилываем у нас нету jsp-error страницы
-- в [RootController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/RootController.java) убираем все методы возвращающие jsp-view, нам понадобятся только регистрация и загрузка сообщений по языку о котором дальше.
-- Так как я не нашел нормального пути загрузки сразу всех сообщений по языку, мне пришлось создать [CustomReloadableResourceBundleMessageSource](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/resources/CustomReloadableResourceBundleMessageSource.java) и добавить метод вытягивающий все сообщения по запрошенному языку (при смене локали в нашем вэб-приложении мы будем его вызывать).
-
-```java
-public class CustomReloadableResourceBundleMessageSource extends ReloadableResourceBundleMessageSource {
-
-    private static final Logger log = LoggerFactory.getLogger(CustomReloadableResourceBundleMessageSource.class);
-
-    public Properties getAllMessages(Locale locale) {
-        PropertiesHolder mergedProperties = getMergedProperties(locale);
-        return mergedProperties.getProperties();
-    }
-}
-```
-
-Также нам понадобятся хендлеры для Spring Security что бы избежать ненужных нам в REST редиректов
-и томкатовских ошибок и получать подходящие ответы для фронта в json.
-
-### Spring Security Handlers
-**[AuthenticationEntryPoint](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomRestAuthenticationEntryPoint.java)** -  При неаутентифицированном доступе к закрытому ресурсу мы будем возвращать статус с ошибкой JSON'е.
-```Java
-public class CustomRestAuthenticationEntryPoint implements AuthenticationEntryPoint {
-
-    @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
-
-//        As we don't need Tomcat HTML Exception we override behavior
-//        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
-
-        //new behavior produces JSON Exception
-        ErrorInfo errorDTO = new ErrorInfo(authException.getClass().getSimpleName(), authException);
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("utf-8");
-        response.getWriter().print(JsonUtil.writeValue(errorDTO));
-    }
-}
-```
-
-**[AccessDeniedHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomAccessDeniedHandler.java)** - так же переопределяем поведение при выбрасывании исключения **AccessDeniedException**
-```Java
-public class CustomAccessDeniedHandler implements AccessDeniedHandler {
-
-    protected static final Logger logger = LoggerFactory.getLogger(CustomAccessDeniedHandler.class);
-
-    public void handle(HttpServletRequest request, HttpServletResponse response,
-                       AccessDeniedException accessDeniedException) throws IOException,
-            ServletException {
-//        We don't need tomcat html exception so we override behavior
-//        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
-
-//        New behavior
-
-        PrintWriter writer = response.getWriter();
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("utf-8");
-    }
-}
-```
-
-**[CustomLogoutSuccessHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomLogoutSuccessHandler.java)** - при логауте просто отдаем HTTP 200.
-```Java
-public class CustomLogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
-
-    @Override
-    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-
-        response.setStatus(HttpServletResponse.SC_OK);
-
-    }
-}
-```
-
-**[CustomSavedRequestAwareAuthenticationSuccessHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomSavedRequestAwareAuthenticationSuccessHandler.java)** - после успешного логина нам не нужны никакие редиректы.
-```Java
-public class CustomSavedRequestAwareAuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
-
-    private RequestCache requestCache = new HttpSessionRequestCache();
-
-
-    @Override
-    public void onAuthenticationSuccess(final HttpServletRequest request, final HttpServletResponse response, final Authentication authentication) throws ServletException, IOException {
-        final SavedRequest savedRequest = requestCache.getRequest(request, response);
-
-        if (savedRequest == null) {
-            clearAuthenticationAttributes(request);
-            return;
-        }
-        final String targetUrlParameter = getTargetUrlParameter();
-        if (isAlwaysUseDefaultTargetUrl() || (targetUrlParameter != null && StringUtils.hasText(request.getParameter(targetUrlParameter)))) {
-            requestCache.removeRequest(request, response);
-            clearAuthenticationAttributes(request);
-            return;
-        }
-
-        clearAuthenticationAttributes(request);
-
-        //WE DO NOT NED REDIRECT
-        // So disable the code below
-        // final String targetUrl = savedRequest.getRedirectUrl();
-        // logger.debug("Redirecting to DefaultSavedRequest Url: " + targetUrl);
-        // getRedirectStrategy().sendRedirect(request, response, targetUrl);
-    }
-
-    public void setRequestCache(final RequestCache requestCache) {
-        this.requestCache = requestCache;
-    }
-
-}
-```
-
-**[CustomUrlAuthenticationFailureHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomUrlAuthenticationFailureHandler.java)** - после не успешной авторизации, так же нам нужен только HTTP-ответ.
-
-```Java
-public class CustomUrlAuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
-
-    @Override
-    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
-
-        PrintWriter writer = response.getWriter();
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("utf-8");
-        writer.write(JsonUtil.writeValue(new ErrorInfo(request.getRequestURI(), exception)));
-    }
-}
-```
-
-###[web.xml](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/webapp/WEB-INF/web.xml)
-- Теперь перенесем наш REST с корня на **/topjava-rs/**, статические ресурсы сайта будут лежать в корне
-```xml
-    <!-- Spring MVC -->
-    <listener>
-        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
-    </listener>
-    <servlet>
-        <servlet-name>mvc-dispatcher</servlet-name>
-        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-        <init-param>
-            <param-name>contextConfigLocation</param-name>
-            <param-value>classpath:spring/spring-mvc.xml</param-value>
-        </init-param>
-        <init-param>
-            <param-name>throwExceptionIfNoHandlerFound</param-name>
-            <param-value>true</param-value>
-        </init-param>
-        <load-on-startup>1</load-on-startup>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>mvc-dispatcher</servlet-name>
-        <url-pattern>/topjava-rs/*</url-pattern>
-    </servlet-mapping>
-```
-
-```xml
-    <!-- Spring Security -->
-    <filter>
-        <filter-name>springSecurityFilterChain</filter-name>
-        <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>springSecurityFilterChain</filter-name>
-        <url-pattern>/topjava-rs/*</url-pattern>
-    </filter-mapping>
-```
-
-Так, вроде, все.
 
 ## Angular 2
 Можно переходить к ангулару.
@@ -480,7 +296,7 @@ export class HighlightDirective {
 </html>
 ```
 
-В **\<body>** страницы мы можем заметить кастомный тег **\<app>**. Это и есть селектор для ангулара. Контент которого будет заменен при загрузке приложения,
+В ```<body>``` страницы мы можем заметить кастомный тег ```<app>```. Это и есть селектор для ангулара. Контент которого будет заменен при загрузке приложения,
 а пока оно грузиться - будет отображаться спиннер.
 
 **В Angular 2** приложение состоит из модулей, так как у нас довольно простенькое приложение, оно будет состоять из одного модуля.
@@ -522,15 +338,15 @@ export function initApp(i18nService: I18nService) {
 }
 ```
 
-Здесь на декораторе **@NgModule**  нужно остановиться поподробнее.
-1. В параметре **imports** мы перечисляем все импортируемые с зависимостей модули которые понадобятся нам в нашем приложении.
-2. В **declarations** мы объявляем все наши компоненты, компонент в **Angular 2** те которые с декоратором @Component (с html-шаблоном).
-3. В **bootstrap** мы объявляем корневой компонент нашего приложения, который будет размещать на себе все остальные компоненты.
-4. в **providers** мы объявляем наши сервисы, singleton сущности которые доступны в любом месте нашего приложения как зависимости.
+Здесь на декораторе ```@NgModule```  нужно остановиться поподробнее.
+1. В параметре ```imports``` мы перечисляем все импортируемые с зависимостей модули которые понадобятся нам в нашем приложении.
+2. В ```declarations``` мы объявляем все наши компоненты, компонент в ```Angular 2``` те которые с декоратором @Component (с html-шаблоном).
+3. В ```bootstrap``` мы объявляем корневой компонент нашего приложения, который будет размещать на себе все остальные компоненты.
+4. в ```providers``` мы объявляем наши сервисы, singleton сущности которые доступны в любом месте нашего приложения как зависимости.
 Это настоящий DI (Dependency injection) в Angular 2 (кто работал с  IoC контейнером - Spring или другим) может провести параллели.
 Для получения зависимости в компонент достаточно потребовать ее в конструкторе. Конечно DI в Angular 2 намного мощнее чем я здесь описываю, для каждого модуля можно создавать свой собственный инстанс сервиса и т.д.. Но это уже отдельная тема для разговора.
-5. Как вы наверное заметили один из компонентов, а именно **i18NService**, не просто указан по имени класса, а вместо него передан
-специальный объект который описывает как инстанциировать эту зависимость (имеет свою стратегию создания), здесь в **useFactory** передаем функцию которая должна быть выполнена
+5. Как вы наверное заметили один из компонентов, а именно ```i18NService```, не просто указан по имени класса, а вместо него передан
+специальный объект который описывает как инстанциировать эту зависимость (имеет свою стратегию создания), здесь в ```useFactory``` передаем функцию которая должна быть выполнена
 до загрузки приложения, в нашем случае - загрузка стандартной русской локали, что бы приложение не загружалось без надписей на кнопках и т.д..
 
 Теперь создадим файл с загрузчиком нашего модуля
@@ -605,17 +421,18 @@ export const routing: ModuleWithProviders = RouterModule.forRoot(appRoutes, {use
 <div class="footer">
     <div class="container" [innerHTML]="'app.footer' | i18nPipe">
 
-    </d
+    </div>
+</div>
 ```
 
  Но взглянув на шаблон нашего родительского компонента нужно понимать что:
 
- 1. **\<header-component></header-component>** является селектором дочернего компонента, который будет всегда отображаться в нашем приложении
+ 1. ```<header-component></header-component>``` является селектором дочернего компонента, который будет всегда отображаться в нашем приложении
  в [**демо**](topjava-angular2.herokuapp.com) приложения это наш хидер, который выполняет функции логин формы и не только.
- 2. **\<router-outlet></router-outlet>** является специальной дериктивой, внутри этих тегов будет отображен тот контент который соответствует
- URL положению на сайте. То есть если мы находимся на **.../#/meal-list**, то внутри этих тегов будет отрисован компонент [**meal-list**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/meal/meal-list.component.ts) , если
- **.../#/profile** то компонент [**profile**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/user/profile.component.ts).
- 3. **[innerHTML]** это специальная директива которая дает нам возможность отрисовать полученный, например, с сервера, готовый html-код - внутри контейнера.
+ 2. ```<router-outlet></router-outlet>``` является специальной дериктивой, внутри этих тегов будет отображен тот контент который соответствует
+ URL положению на сайте. То есть если мы находимся на ```.../#/meal-list```, то внутри этих тегов будет отрисован компонент [**meal-list**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/meal/meal-list.component.ts) , если
+ ```.../#/profile``` то компонент [**profile**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/user/profile.component.ts).
+ 3. ```[innerHTML]``` это специальная директива которая дает нам возможность отрисовать полученный, например, с сервера, готовый html-код - внутри контейнера.
 
  Начнем с [**HeaderComponent**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/auth/header.component.ts)
 
@@ -668,12 +485,12 @@ export const routing: ModuleWithProviders = RouterModule.forRoot(appRoutes, {use
  }
  ```
 
- 1. Мы уже рассматривали функцию-декоратор **@Component** добавился только параметр **styleUrls** который ссылается на стили для этого компонента
+ 1. Мы уже рассматривали функцию-декоратор ```@Component``` добавился только параметр ```styleUrls``` который ссылается на стили для этого компонента
  2. В TypeScript создание класса выглядит следующим образом
- **export class HeaderComponent implements OnInit**
- ключевое слово **export** делает доступным класс в контексте нашего приложения, наш класс имплементирует один из интерфейсов Angular 2
- **OnInit** это один из так называемых **LIFECYCLE HOOKS** это значит что при создании компонента
- Angular 2 вызовет метод **OnInit** сразу после конструктора, в котором мы может доинициализировать наш компонент, тем что требуется для его корректной работы.
+ ```export class HeaderComponent implements OnInit```
+ ключевое слово ```export``` делает доступным класс в контексте нашего приложения, наш класс имплементирует один из интерфейсов Angular 2
+ ```OnInit``` это один из так называемых **LIFECYCLE HOOKS** это значит что при создании компонента
+ Angular 2 вызовет метод ```OnInit``` сразу после конструктора, в котором мы может доинициализировать наш компонент, тем что требуется для его корректной работы.
 
  ```TypeScript
 private errors: ErrorModel[] = [];
@@ -722,8 +539,8 @@ private errors: ErrorModel[] = [];
         )
     }
 ```
-Здесь мы используем **RxJS** который повсеместно используется в **Angular 2**. У нас есть сервис **ExceptionService** который грубо говоря содержит поток
-**errorStream**, при создании нашего компонента [**HeaderComponent**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/auth/header.component.ts) мы подписываемся на этот поток и когда какой-либо другой компонент бросает туда ошибку, мы перебрасываем ее в наш массив **errors**, который как
+Здесь мы используем **RxJS** который повсеместно используется в **Angular 2**. У нас есть сервис ```ExceptionService``` который грубо говоря содержит поток
+```errorStream```, при создании нашего компонента [**HeaderComponent**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/component/auth/header.component.ts) мы подписываемся на этот поток и когда какой-либо другой компонент бросает туда ошибку, мы перебрасываем ее в наш массив **errors**, который как
 я показывал ранее используется в компоненте **growl** из **primeng** для вывода ошибок, после показа ошибки она из массива удаляется.
 
 Метод который еще стоит рассмотреть это
@@ -737,13 +554,15 @@ private errors: ErrorModel[] = [];
 1. Вызывается AuthService он посылает запрос к Spring Security и инвалидирует сессию.
 2. Далее вызывается роутер который мы получили через DI в конструкторе и переводит роутер на компонент который соответствует URL'у **login**.
 А это как мы видели
+
 ```TypeScript
     {
         path: "login",
         component: EntryComponent,
     },
 ```
-В свою очередь он отображается внутри **\<router-outlet>\</router-outlet>** нашего родительского компонента
+В свою очередь он отображается внутри ```<router-outlet></router-outlet>``` нашего родительского компонента
+
 ```TypeScript
 <header-component></header-component>
 
@@ -811,18 +630,18 @@ private errors: ErrorModel[] = [];
  ```html
 <a [routerLink]="['/meal-list']" class="navbar-brand">{{'app.title' | i18nPipe}}/</a>
 ```
-Для этого используется директива **[routerLink]** которая принимает параметром желаемую ссылку из объявленных в конфиге нашего роутера. Контент тега мы разберем дальше когда будем говорить о интернационализации.
-2. Дальше мы видим ***ngIf** это структурная директива Angular 2, она принимает параметром boolean выражение. При позитивном результате - блок разметки на котором есть эта директива будет показан, в противном случае будет не спрятан, а полностью выпилен из DOM.
+Для этого используется директива ```[routerLink]``` которая принимает параметром желаемую ссылку из объявленных в конфиге нашего роутера. Контент тега мы разберем дальше когда будем говорить о интернационализации.
+2. Дальше мы видим ```*ngIf``` это структурная директива Angular 2, она принимает параметром boolean выражение. При позитивном результате - блок разметки на котором есть эта директива будет показан, в противном случае будет не спрятан, а полностью выпилен из DOM.
 ```html
 <li *ngIf="authService.authenticatedAs">
 ```
-Здесь мы обращаемся к полю нашего сервиса **authenticatedAs**, которое хранит профиль залогиненого пользователя. Который мы получаем при первом вызове [**AuthActivateGuard**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/shared/auth.activate.guard.ts) . То есть при наличии профиля в данной переменной
+Здесь мы обращаемся к полю нашего сервиса ```authenticatedAs```, которое хранит профиль залогиненого пользователя. Который мы получаем при первом вызове [**AuthActivateGuard**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/shared/auth.activate.guard.ts) . То есть при наличии профиля в данной переменной
 будет показана кнопка **logout**, в противном - форма входа.
 3. Также нужно рассмотреть кнопку **logout**
 ```html
 <button type="button" class="btn btn-primary" (click)="onLogout()">{{'app.logout' | i18nPipe}}</button>
 ```
-Синтаксис **(click)="onLogout()"** означает что мы слушаем событие **click** и вызываем метод нашего компонента onLogout().
+Синтаксис ```(click)="onLogout()"``` означает что мы слушаем событие **click** и вызываем метод нашего компонента onLogout().
 4. В шаблонах много {{}} это так называемая **Interpolation** внутри скобок вычисляется выражение и возвращается его результат, или например переменная.
 
 В нашем приложении основная функциональность состоит в управлении едой, своим профилем и если мы админ - управлении юзерами. По своей структуре они имеют идентичную реализацию
@@ -1049,7 +868,7 @@ private editMealChild: EditMealComponent;
 ```
 В шаблоне мы используем компоненты **PrimeNG** такие как: DataTable и Сalendar. В шаблоне компонента
 есть полный доступ ко всем его переменным и методам, мы передаем в календарь переменные для дат фильтрации из нашего компонента, когда пользователь выберет дату и время они будут инициализированы. На передаче датасета в грид мы уже останавливались,
-единственное это **[rowStyleClass]="getRowClass"**  в этот параметр грида мы передаем функцию из нашего компонента, при отрисовке поля, функция вызывается и на основе переданных переданных в нее данных отдает **CSS** класс
+единственное это ```[rowStyleClass]="getRowClass"```  в этот параметр грида мы передаем функцию из нашего компонента, при отрисовке поля, функция вызывается и на основе переданных переданных в нее данных отдает **CSS** класс
 для поля. Здесь мы используем это для подкрашивания строк, которые превышают норму калорий в день. На API **PrimeNG** смысла останавливаться нету, лучше и больше можно узнать на их сайте.
 И последняя строка
 ```html
@@ -1101,15 +920,15 @@ private editMealChild: EditMealComponent;
  }
  ```
 
-1. **showToggle** это переключатель видимости окна, к нему привязана *ngIf директива которую мы рассматривали раньше. Таким образом мы можем управлять видимостью компонента с родителя.
-2. **mealForm** форма нашего модального окна
-3. **EventEmitter** специальный объект который "излучает" **event**, типизируется типом который буду нести в себе ивенты в качестве информации, в нашем случае объект добавленной или отредактированной [**UserMeal**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/model/meal.model.ts) .
+1. ```showToggle``` это переключатель видимости окна, к нему привязана *ngIf директива которую мы рассматривали раньше. Таким образом мы можем управлять видимостью компонента с родителя.
+2. ```mealForm``` форма нашего модального окна
+3. ```EventEmitter``` специальный объект который "излучает" **event**, типизируется типом который буду нести в себе ивенты в качестве информации, в нашем случае объект добавленной или отредактированной [**UserMeal**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/model/meal.model.ts) .
 Что бы создать свой собственный event достаточно создать **EventEmitter** помеченный функцией-декоратором **@Output()**, и вызвать на этом объекте **emit()**. Родительский компонент должен "слушать" данный **event** в шаблоне (как показано выше) и обрабатывать.
 4. При создании компонента мы заполняем форму пустыми значениями.
 5. Добавляем валидаторы стандартный, делающий поле - обязательным и свой ValidateUtil.validateMealCalories.
-6. При выборе записи в гриде в родительском компоненте мы заполняем форму через **fillMyForm(userMeal: UserMeal)** и показываем ее.
-7. **resetForm()** сбрасывает поля на пустые.
-8. При сохранении **onSave()** мы "излучаем" event который обрабатывает родительский компонент и отправляет в сервис.
+6. При выборе записи в гриде в родительском компоненте мы заполняем форму через ```fillMyForm(userMeal: UserMeal)``` и показываем ее.
+7. ```resetForm()``` сбрасывает поля на пустые.
+8. При сохранении ```onSave()``` мы "излучаем" event который обрабатывает родительский компонент и отправляет в сервис.
 
 Далее рассмотри [**MealService**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/service/meal.service.ts)
 
@@ -1280,8 +1099,8 @@ export class AuthService {
 }
 ```
 Простой, очень примитивный сервис для аутентификации.
-1. При успешном логине происходит переход на **meal-list**. При ошибке, мы бросаем ошибку в общую очередь **ExceptionService.onError(error);** которая потом показывается в хидере.
-2. Может показаться запутанным метод **isAuthenticated()** он используется в нашем **ActivateGuard** который защищает наши компоненты от
+1. При успешном логине происходит переход на **meal-list**. При ошибке, мы бросаем ошибку в общую очередь ```ExceptionService.onError(error);``` которая потом показывается в хидере.
+2. Может показаться запутанным метод ```isAuthenticated()``` он используется в нашем **ActivateGuard** который защищает наши компоненты от
 неавторизированного доступа. Если поле пустое (например заход по ссылке с валидной сессией) мы запрашиваем свой профиль, при успехе сохраняем результат в поле и отдаем **true** (успех),
 при ошибке, добавляем ошибку в очередь и отдаем **false**. Если же переменная инициализирована сразу отдаем **true**.
 
@@ -1308,12 +1127,12 @@ export class AuthActivateGuard implements CanActivate {
 Является по сути тоже сервисом, который имплементирует интерфейс **CanActivate**, используется в нашем роутер-конфиге для проверки наличия прав доступа к определенному компоненту.
 В нашем случае только на наличии авторизации, хотя эта часть может быть во много раз сложнее если в приложении много ролей и привилегий.
 Здесь мы вызывает наш **AuthService.isAuthenticated()** и если он отдает **false** то переводим роутер на страницу логина. **CanActivate** может
-возвращать как **boolean** значения так и **Observable\<boolean>** (например для проверки которая требует запроса к серверу) и первое и второе
+возвращать как **boolean** значения так и ```Observable<boolean>``` (например для проверки которая требует запроса к серверу) и первое и второе
 поддерживается. В частном случае для однообразности использую везде **Observable**. Оборачивая даже обычные **boolean**.
 
 ###Pipes
 В нашем приложении используется один **pipe** для интернационализации. Как вы видели, там где нам нужно вывести сообщение мы используем код сообщения,
-например _\<h2 class="modal-title">_**{{'meals.edit' | i18nPipe}}**_\</h2>_.
+например _```<h2 class="modal-title">{{'meals.edit' | i18nPipe}}</h2>```_.
 Наш [**pipe**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/shared/pipe/i18n.pipe.ts)
 
 ```javascript
@@ -1329,14 +1148,193 @@ export class I18nPipe implements PipeTransform {
     }
 }
 ```
-получает ключ в параметре **value: any** и использует его для запроса нужного нам сообщения в **i18Service.getMessage(value)** в итоге
-результатом нашей интерполяции является нужное нам сообщение. Pipes могу иметь также и параметры, например **{{birthday | date:'fullDate'}}**
-и даже использоваться последовательно всего лишь добавив еще один **'|'**, например, **{{birthday | date:'fullDate' | uppercase}}** так что это довольно мощный инструмент.
+получает ключ в параметре ```value: any``` и использует его для запроса нужного нам сообщения в ```i18Service.getMessage(value)``` в итоге
+результатом нашей интерполяции является нужное нам сообщение. Pipes могу иметь также и параметры, например ```{{birthday | date:'fullDate'}}```
+и даже использоваться последовательно всего лишь добавив еще один **'|'**, например, ```{{birthday | date:'fullDate' | uppercase}}``` так что это довольно мощный инструмент.
 Но наш пайп не самый обычный, мы может видеть что в декораторе **@Pipe()** кроме указания имени еще используется параметр **pure**.
 Все Pipes по умолчанию **stateless** то есть **(pure = true)** вызываются единоразово при рендеринге шаблона. Если же использовать **pure = false**
 то наш пайп уже не будет **stateless** он будет следить за всеми значениями которые он через себя пропустил и при изменении например набора
 сообщений в [**I18Service**](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/webapp/dev/service/i18n.service.ts) (при изменении языка) немедленно перерисовывать их. Это довольно опасная фича которую надо использовать с большой осторожностью,
 так как это может серьезно ударить по производительности.
+
+##Backend
+Итак для удобного взаимодействия с сервером, нам придется этот сервер немного изменить.
+
+
+- [AdminAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminAjaxController.java) будет выпилиен за ненадобностью,
+а его метод **enabled** (для активации\блокировки пользователя) заберем в [AdminRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/user/AdminRestController.java)
+оставив таким образом один контроллер для админа
+- Также поступим и с [MealAjaxController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealAjaxController.java) оставив только [MealRestController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/meal/MealRestController.java)
+- [ModelInterceptor](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/interceptor/ModelInterceptor.java) нам также не нужен так мы не используем JSP
+- [GlobalControllerExceptionHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/GlobalControllerExceptionHandler.java) выпилываем у нас нету jsp-error страницы
+- в [RootController](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/java/ru/javawebinar/topjava/web/RootController.java) убираем все методы возвращающие jsp-view, нам понадобятся только регистрация и загрузка сообщений по языку о котором дальше.
+- Так как я не нашел нормального пути загрузки сразу всех сообщений по языку, мне пришлось создать [CustomReloadableResourceBundleMessageSource](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/resources/CustomReloadableResourceBundleMessageSource.java) и добавить метод вытягивающий все сообщения по запрошенному языку (при смене локали в нашем вэб-приложении мы будем его вызывать).
+
+```java
+public class CustomReloadableResourceBundleMessageSource extends ReloadableResourceBundleMessageSource {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomReloadableResourceBundleMessageSource.class);
+
+    public Properties getAllMessages(Locale locale) {
+        PropertiesHolder mergedProperties = getMergedProperties(locale);
+        return mergedProperties.getProperties();
+    }
+}
+```
+
+Также нам понадобятся хендлеры для Spring Security что бы избежать ненужных нам в REST редиректов
+и томкатовских ошибок и получать подходящие ответы для фронта в json.
+
+### Spring Security Handlers
+**[AuthenticationEntryPoint](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomRestAuthenticationEntryPoint.java)** -  При неаутентифицированном доступе к закрытому ресурсу мы будем возвращать статус с ошибкой JSON'е.
+```Java
+public class CustomRestAuthenticationEntryPoint implements AuthenticationEntryPoint {
+
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
+
+//        As we don't need Tomcat HTML Exception we override behavior
+//        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+
+        //new behavior produces JSON Exception
+        ErrorInfo errorDTO = new ErrorInfo(authException.getClass().getSimpleName(), authException);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("utf-8");
+        response.getWriter().print(JsonUtil.writeValue(errorDTO));
+    }
+}
+```
+
+**[AccessDeniedHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomAccessDeniedHandler.java)** - так же переопределяем поведение при выбрасывании исключения **AccessDeniedException**
+```Java
+public class CustomAccessDeniedHandler implements AccessDeniedHandler {
+
+    protected static final Logger logger = LoggerFactory.getLogger(CustomAccessDeniedHandler.class);
+
+    public void handle(HttpServletRequest request, HttpServletResponse response,
+                       AccessDeniedException accessDeniedException) throws IOException,
+            ServletException {
+//        We don't need tomcat html exception so we override behavior
+//        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+
+//        New behavior
+
+        PrintWriter writer = response.getWriter();
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("utf-8");
+    }
+}
+```
+
+**[CustomLogoutSuccessHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomLogoutSuccessHandler.java)** - при логауте просто отдаем HTTP 200.
+```Java
+public class CustomLogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
+
+    @Override
+    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+
+        response.setStatus(HttpServletResponse.SC_OK);
+
+    }
+}
+```
+
+**[CustomSavedRequestAwareAuthenticationSuccessHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomSavedRequestAwareAuthenticationSuccessHandler.java)** - после успешного логина нам не нужны никакие редиректы.
+```Java
+public class CustomSavedRequestAwareAuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+
+    private RequestCache requestCache = new HttpSessionRequestCache();
+
+
+    @Override
+    public void onAuthenticationSuccess(final HttpServletRequest request, final HttpServletResponse response, final Authentication authentication) throws ServletException, IOException {
+        final SavedRequest savedRequest = requestCache.getRequest(request, response);
+
+        if (savedRequest == null) {
+            clearAuthenticationAttributes(request);
+            return;
+        }
+        final String targetUrlParameter = getTargetUrlParameter();
+        if (isAlwaysUseDefaultTargetUrl() || (targetUrlParameter != null && StringUtils.hasText(request.getParameter(targetUrlParameter)))) {
+            requestCache.removeRequest(request, response);
+            clearAuthenticationAttributes(request);
+            return;
+        }
+
+        clearAuthenticationAttributes(request);
+
+        //WE DO NOT NED REDIRECT
+        // So disable the code below
+        // final String targetUrl = savedRequest.getRedirectUrl();
+        // logger.debug("Redirecting to DefaultSavedRequest Url: " + targetUrl);
+        // getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+
+    public void setRequestCache(final RequestCache requestCache) {
+        this.requestCache = requestCache;
+    }
+
+}
+```
+
+**[CustomUrlAuthenticationFailureHandler](https://github.com/12ozCode/topjava08-to-angular2/blob/angular2/src/main/java/ru/javawebinar/topjava/web/handler/CustomUrlAuthenticationFailureHandler.java)** - после не успешной авторизации, так же нам нужен только HTTP-ответ.
+
+```Java
+public class CustomUrlAuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
+
+    @Override
+    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
+
+        PrintWriter writer = response.getWriter();
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("utf-8");
+        writer.write(JsonUtil.writeValue(new ErrorInfo(request.getRequestURI(), exception)));
+    }
+}
+```
+
+###[web.xml](https://github.com/12ozCode/topjava08-to-angular2/blob/master/src/main/webapp/WEB-INF/web.xml)
+- Теперь перенесем наш REST с корня на **/topjava-rs/**, статические ресурсы сайта будут лежать в корне
+```xml
+    <!-- Spring MVC -->
+    <listener>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
+    <servlet>
+        <servlet-name>mvc-dispatcher</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:spring/spring-mvc.xml</param-value>
+        </init-param>
+        <init-param>
+            <param-name>throwExceptionIfNoHandlerFound</param-name>
+            <param-value>true</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>mvc-dispatcher</servlet-name>
+        <url-pattern>/topjava-rs/*</url-pattern>
+    </servlet-mapping>
+```
+
+```xml
+    <!-- Spring Security -->
+    <filter>
+        <filter-name>springSecurityFilterChain</filter-name>
+        <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>springSecurityFilterChain</filter-name>
+        <url-pattern>/topjava-rs/*</url-pattern>
+    </filter-mapping>
+```
+
+Так, вроде, все.
 
 ###Итого
 Мне как человеку не имевшего дела с первым **Angular**o'ом (который на первый взгляд мне не нравился), нет возможности их сравнить.
